@@ -209,7 +209,8 @@ class TestTransformPipeline:
         assert "metrics.sales" in result["records"][0]
 
     def test_filter_option(self):
-        result = transform_pipeline(self.BASE_JSON, {"filter_field": "region", "filter_value": "EU"})
+        config = {"filter_field": "region", "filter_value": "EU"}
+        result = transform_pipeline(self.BASE_JSON, config)
         assert len(result["records"]) == 2
 
     def test_flatten_then_filter(self):
