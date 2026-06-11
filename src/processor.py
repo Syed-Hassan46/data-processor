@@ -1,127 +1,70 @@
-"""
-JSON Data Transformation Processor
-Core application logic for transforming, filtering, and summarising JSON datasets.
-"""
-
 import json
 import statistics
-from typing import Any
 
 
-# ---------------------------------------------------------------------------
-# Transform helpers
-# ---------------------------------------------------------------------------
-
-def load_json(data: str) -> Any:
-    """Parse a JSON string and return the Python object."""
-    return json.loads(data)
+def load_json(raw):
+    return json.loads(raw)
 
 
-def flatten_record(record: dict, parent_key: str = "", sep: str = ".") -> dict:
-    """
-    Recursively flatten a nested dictionary.
-
-    Example:
-        {"a": {"b": 1}} -> {"a.b": 1}
-    """
-    items: dict = {}
-    for key, value in record.items():
-        new_key = f"{parent_key}{sep}{key}" if parent_key else key
-        if isinstance(value, dict):
-            items.update(flatten_record(value, new_key, sep=sep))
+def flatten(rec, prefix="", sep="."):
+    out = {}
+    for k, v in rec.items():
+        key = f"{prefix}{sep}{k}" if prefix else k
+        if isinstance(v, dict):
+            out.update(flatten(v, key, sep))
         else:
-            items[new_key] = value
-    return items
+            out[key] = v
+    return out
 
 
-def flatten_records(records: list[dict]) -> list[dict]:
-    """Flatten every record in a list."""
-    return [flatten_record(r) for r in records]
+def flatten_all(rows):
+    return [flatten(r) for r in rows]
 
 
-def filter_records(records: list[dict], field: str, value: Any) -> list[dict]:
-    """Return only records where *field* equals *value*."""
-    return [r for r in records if r.get(field) == value]
+def filter_rows(rows, field, val):
+    return [r for r in rows if r.get(field) == val]
 
 
-def rename_fields(record: dict, mapping: dict[str, str]) -> dict:
-    """
-    Rename keys in *record* according to *mapping* {old_name: new_name}.
-    Keys not in *mapping* are kept as-is.
-    """
-    return {mapping.get(k, k): v for k, v in record.items()}
+def rename_keys(rec, mapping):
+    return {mapping.get(k, k): v for k, v in rec.items()}
 
 
-def rename_fields_in_records(records: list[dict], mapping: dict[str, str]) -> list[dict]:
-    """Apply :func:`rename_fields` to every record."""
-    return [rename_fields(r, mapping) for r in records]
+def rename_all(rows, mapping):
+    return [rename_keys(r, mapping) for r in rows]
 
 
-def extract_field(records: list[dict], field: str) -> list:
-    """Extract the value of *field* from every record (skips missing keys)."""
-    return [r[field] for r in records if field in r]
+def pluck(rows, field):
+    return [r[field] for r in rows if field in r]
 
 
-def summarise(records: list[dict], numeric_field: str) -> dict:
-    """
-    Return basic statistics for *numeric_field* across all records.
-
-    Returns:
-        dict with keys: count, min, max, mean, median, stdev (or None if < 2 values)
-    """
-    values = []
-    for r in records:
-        val = r.get(numeric_field)
-        if isinstance(val, (int, float)):
-            values.append(val)
-
-    if not values:
+def get_stats(rows, field):
+    nums = [r[field] for r in rows if isinstance(r.get(field), (int, float))]
+    if not nums:
         return {"count": 0, "min": None, "max": None,
                 "mean": None, "median": None, "stdev": None}
-
     return {
-        "count": len(values),
-        "min": min(values),
-        "max": max(values),
-        "mean": round(statistics.mean(values), 4),
-        "median": statistics.median(values),
-        "stdev": round(statistics.stdev(values), 4) if len(values) >= 2 else None,
+        "count": len(nums),
+        "min": min(nums),
+        "max": max(nums),
+        "mean": round(statistics.mean(nums), 4),
+        "median": statistics.median(nums),
+        "stdev": round(statistics.stdev(nums), 4) if len(nums) >= 2 else None,
     }
 
 
-def transform_pipeline(raw_json: str, config: dict) -> dict:
-    """
-    Run a configurable transformation pipeline on a JSON dataset.
+def run(raw, cfg):
+    data = load_json(raw)
+    rows = data.get("data", []) if isinstance(data, dict) else data
 
-    Config keys (all optional):
-        flatten       (bool)   – flatten nested records
-        filter_field  (str)    – field name to filter on
-        filter_value  (any)    – value to match
-        rename        (dict)   – {old: new} field rename mapping
-        summarise_field (str)  – numeric field to summarise
+    if cfg.get("flatten"):
+        rows = flatten_all(rows)
 
-    Returns:
-        {"records": [...], "summary": {...} | None}
-    """
-    data = load_json(raw_json)
+    if cfg.get("filter_field") is not None:
+        rows = filter_rows(rows, cfg["filter_field"], cfg.get("filter_value"))
 
-    # Accept either a top-level list or {"data": [...]}
-    if isinstance(data, dict):
-        records: list[dict] = data.get("data", [])
-    else:
-        records = data
+    if cfg.get("rename"):
+        rows = rename_all(rows, cfg["rename"])
 
-    if config.get("flatten"):
-        records = flatten_records(records)
+    stats = get_stats(rows, cfg["summarise_field"]) if cfg.get("summarise_field") else None
 
-    if config.get("filter_field") is not None:
-        records = filter_records(records, config["filter_field"], config.get("filter_value"))
-
-    if config.get("rename"):
-        records = rename_fields_in_records(records, config["rename"])
-
-    summary = None
-    if config.get("summarise_field"):
-        summary = summarise(records, config["summarise_field"])
-
-    return {"records": records, "summary": summary}
+    return {"rows": rows, "stats": stats}

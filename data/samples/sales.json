@@ -1,0 +1,7 @@
+[
+  {"id": 1, "region": "EU",   "product": "Widget A", "metrics": {"sales": 120, "returns": 4}},
+  {"id": 2, "region": "US",   "product": "Widget B", "metrics": {"sales": 340, "returns": 12}},
+  {"id": 3, "region": "EU",   "product": "Widget C", "metrics": {"sales": 95,  "returns": 2}},
+  {"id": 4, "region": "APAC", "product": "Widget A", "metrics": {"sales": 210, "returns": 7}},
+  {"id": 5, "region": "US",   "product": "Widget C", "metrics": {"sales": 400, "returns": 15}}
+]

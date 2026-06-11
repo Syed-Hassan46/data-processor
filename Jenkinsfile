@@ -22,7 +22,6 @@ pipeline {
 
         stage('Setup') {
             steps {
-                echo "==> Setting up Python virtual environment"
                 sh """
                     rm -rf .venv
                     python3.11 -m venv .venv
@@ -35,14 +34,12 @@ pipeline {
 
         stage('Lint') {
             steps {
-                echo "==> Running flake8 linter"
                 sh ".venv/bin/flake8 src/ tests/ --max-line-length=100 --statistics"
             }
         }
 
         stage('Unit Tests') {
             steps {
-                echo "==> Running unit tests"
                 sh """
                     .venv/bin/pytest tests/unit/ \
                         --junitxml=reports/unit_results.xml \
@@ -62,7 +59,6 @@ pipeline {
 
         stage('Integration Tests') {
             steps {
-                echo "==> Running integration tests"
                 sh """
                     .venv/bin/pytest tests/integration/ \
                         --junitxml=reports/integration_results.xml \
@@ -78,7 +74,6 @@ pipeline {
 
         stage('Publish Reports') {
             steps {
-                echo "==> Archiving test reports"
                 archiveArtifacts artifacts: 'reports/**', fingerprint: true
                 publishHTML(target: [
                     allowMissing         : false,
@@ -96,14 +91,12 @@ pipeline {
                 branch 'main'
             }
             steps {
-                echo "==> Deploying to ${DEPLOY_HOST}:${DEPLOY_PATH}"
                 sshagent(credentials: ['deploy-ssh-key']) {
                     sh """
                         rsync -avz --delete \
                             --exclude='__pycache__' \
                             --exclude='*.pyc' \
-                            src/ \
-                            ${DEPLOY_HOST}:${DEPLOY_PATH}/src/
+                            src/ ${DEPLOY_HOST}:${DEPLOY_PATH}/src/
                         ssh ${DEPLOY_HOST} "cd ${DEPLOY_PATH} && pip install -r requirements.txt"
                     """
                 }
@@ -113,13 +106,12 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline completed successfully."
+            echo "all good"
         }
         failure {
-            echo "Pipeline FAILED - check the console output."
+            echo "something broke, check the logs"
         }
         always {
-            echo "Cleaning up workspace..."
             cleanWs(patterns: [[pattern: '.venv/**', type: 'INCLUDE']])
         }
     }
