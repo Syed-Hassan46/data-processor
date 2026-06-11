@@ -6,20 +6,15 @@ Tests each public function in src/processor.py in isolation.
 import json
 import pytest
 from src.processor import (
-    load_json,
-    flatten_record,
-    flatten_records,
-    filter_records,
-    rename_fields,
-    rename_fields_in_records,
-    extract_field,
-    summarise,
-    transform_pipeline,
+    load_json, flatten_record, flatten_records, filter_records,
+    rename_fields, extract_field,
+    summarise, transform_pipeline,
 )
 
 # ---------------------------------------------------------------------------
 # load_json
 # ---------------------------------------------------------------------------
+
 
 class TestLoadJson:
     def test_parses_list(self):
@@ -39,6 +34,7 @@ class TestLoadJson:
 # ---------------------------------------------------------------------------
 # flatten_record
 # ---------------------------------------------------------------------------
+
 
 class TestFlattenRecord:
     def test_flat_record_unchanged(self):

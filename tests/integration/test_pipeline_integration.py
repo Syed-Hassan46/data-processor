@@ -1,14 +1,6 @@
-"""
-Integration Tests – JSON Data Transformation Processor
-Tests end-to-end pipeline behaviour: file I/O, realistic datasets,
-edge cases that cross multiple functions.
-"""
-
 import json
-import os
-import tempfile
 import pytest
-from src.processor import transform_pipeline, load_json, summarise, flatten_records
+from src.processor import transform_pipeline, load_json
 
 
 # ---------------------------------------------------------------------------
@@ -22,6 +14,7 @@ SALES_DATASET = [
     {"id": 4, "region": "APAC", "product": "Widget A", "metrics": {"sales": 210, "returns": 7}},
     {"id": 5, "region": "US", "product": "Widget C", "metrics": {"sales": 400, "returns": 15}},
 ]
+
 
 @pytest.fixture
 def sales_json():
