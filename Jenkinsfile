@@ -3,11 +3,8 @@ pipeline {
     agent any
 
     environment {
-        PYTHON_VERSION  = '3.11'
-        VENV_DIR        = "${WORKSPACE}/.venv"
-        REPORTS_DIR     = "${WORKSPACE}/reports"
-        DEPLOY_HOST     = credentials('deploy-ssh-host')
-        DEPLOY_PATH     = '/opt/data-processor'
+        DEPLOY_HOST = credentials('deploy-ssh-host')
+        DEPLOY_PATH = '/opt/data-processor'
     }
 
     options {
@@ -27,10 +24,11 @@ pipeline {
             steps {
                 echo "==> Setting up Python virtual environment"
                 sh """
-                    python3.11 -m venv ${VENV_DIR}
-                    ${VENV_DIR}/bin/pip install --upgrade pip
-                    ${VENV_DIR}/bin/pip install -r requirements.txt
-                    mkdir -p ${REPORTS_DIR}
+                    rm -rf .venv
+                    python3.11 -m venv .venv
+                    .venv/bin/pip install --upgrade pip
+                    .venv/bin/pip install -r requirements.txt
+                    mkdir -p reports
                 """
             }
         }
@@ -38,7 +36,7 @@ pipeline {
         stage('Lint') {
             steps {
                 echo "==> Running flake8 linter"
-                sh "${VENV_DIR}/bin/flake8 src/ tests/ --max-line-length=100 --statistics"
+                sh ".venv/bin/flake8 src/ tests/ --max-line-length=100 --statistics"
             }
         }
 
@@ -46,18 +44,18 @@ pipeline {
             steps {
                 echo "==> Running unit tests"
                 sh """
-                    ${VENV_DIR}/bin/pytest tests/unit/ \
-                        --junitxml=${REPORTS_DIR}/unit_results.xml \
+                    .venv/bin/pytest tests/unit/ \
+                        --junitxml=reports/unit_results.xml \
                         --cov=src \
-                        --cov-report=xml:${REPORTS_DIR}/coverage.xml \
-                        --cov-report=html:${REPORTS_DIR}/coverage_html \
+                        --cov-report=xml:reports/coverage.xml \
+                        --cov-report=html:reports/coverage_html \
                         --cov-fail-under=80 \
                         -v
                 """
             }
             post {
                 always {
-                    junit "${REPORTS_DIR}/unit_results.xml"
+                    junit 'reports/unit_results.xml'
                 }
             }
         }
@@ -66,14 +64,14 @@ pipeline {
             steps {
                 echo "==> Running integration tests"
                 sh """
-                    ${VENV_DIR}/bin/pytest tests/integration/ \
-                        --junitxml=${REPORTS_DIR}/integration_results.xml \
+                    .venv/bin/pytest tests/integration/ \
+                        --junitxml=reports/integration_results.xml \
                         -v
                 """
             }
             post {
                 always {
-                    junit "${REPORTS_DIR}/integration_results.xml"
+                    junit 'reports/integration_results.xml'
                 }
             }
         }
@@ -81,12 +79,12 @@ pipeline {
         stage('Publish Reports') {
             steps {
                 echo "==> Archiving test reports"
-                archiveArtifacts artifacts: "reports/**", fingerprint: true
+                archiveArtifacts artifacts: 'reports/**', fingerprint: true
                 publishHTML(target: [
                     allowMissing         : false,
                     alwaysLinkToLastBuild: true,
                     keepAll              : true,
-                    reportDir            : "reports/coverage_html",
+                    reportDir            : 'reports/coverage_html',
                     reportFiles          : 'index.html',
                     reportName           : 'Coverage Report'
                 ])
@@ -118,11 +116,11 @@ pipeline {
             echo "Pipeline completed successfully."
         }
         failure {
-            echo "Pipeline FAILED – check the console output."
+            echo "Pipeline FAILED - check the console output."
         }
         always {
             echo "Cleaning up workspace..."
-            cleanWs(patterns: [[pattern: ".venv/**", type: 'INCLUDE']])
+            cleanWs(patterns: [[pattern: '.venv/**', type: 'INCLUDE']])
         }
     }
 }
